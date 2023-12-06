@@ -1,13 +1,18 @@
-import { Link } from "react-router-dom";
 import { Heading } from "@chakra-ui/react";
+
+import PartyId from "../components/PartyId";
+import NewRoom from "../components/NewRoom";
+import RecentRooms from "../components/RecentRooms";
+import ToKnownRoom from "../components/ToKnownRoom";
 
 function Home() {
   return (
     <>
-      <Heading>MPC TSS JS Demo</Heading>
-      <p>
-        <Link to={"/room/123"}>Go to Room 123</Link>
-      </p>
+      <Heading mt="5">MPC TSS JS Demo</Heading>
+      <PartyId />
+      <RecentRooms />
+      <NewRoom />
+      <ToKnownRoom />
     </>
   );
 }

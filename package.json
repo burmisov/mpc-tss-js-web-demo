@@ -9,17 +9,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@noble/hashes": "^1.3.2",
-    "@syncedstore/core": "^0.6.0",
     "ethers": "^6.9.0",
     "framer-motion": "^10.16.14",
     "mpc-tss": "^0.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1",
+    "unique-names-generator": "^4.7.1",
     "y-webrtc": "^10.2.6",
     "yjs": "^13.6.10"
   },
