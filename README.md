@@ -15,7 +15,7 @@ using the [mpc-tss-js](https://github.com/burmisov/mpc-tss-js) library.
 * [ ] Implement the signing process (for an arbitrary message)
 * [ ] Maybe implement a simple Sepolia (Ethereum testnet) wallet
 * [ ] Do a proper README and motivation
-* [ ] CI
+* [x] CI
 
 ### Development
 
