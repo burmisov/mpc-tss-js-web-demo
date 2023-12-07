@@ -10,7 +10,7 @@ function PartyId() {
       <Avatar name={partyId} />
       <Box ml="3">
         <Text fontWeight="bold">{partyId}</Text>
-        <Text fontSize="sm">This is your Party ID used for all rooms</Text>
+        <Text fontSize="sm">This is you</Text>
       </Box>
     </Flex>
   );

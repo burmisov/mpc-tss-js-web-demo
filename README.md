@@ -8,14 +8,14 @@ using the [mpc-tss-js](https://github.com/burmisov/mpc-tss-js) library.
 
 ## TODO:
 
-* [ ] Create a foundation for multi-party room-based communication
-* [ ] Push this out to Github Pages or similar
-* [ ] Devise a way to exchange data for performing MPC
+* [x] Create a foundation for multi-party room-based communication
+* [x] Push this out to Github Pages or similar
+* [x] CI
+* [x] Devise a way to exchange data for performing MPC
 * [ ] Implement the keygen process
 * [ ] Implement the signing process (for an arbitrary message)
 * [ ] Maybe implement a simple Sepolia (Ethereum testnet) wallet
 * [ ] Do a proper README and motivation
-* [x] CI
 
 ### Development
 
