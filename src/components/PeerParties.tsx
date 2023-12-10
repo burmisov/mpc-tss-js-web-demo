@@ -29,17 +29,25 @@ function PeerParties({
   selfId: string;
   peerStatuses: Record<string, boolean>;
 }) {
+  const selfStatus = peerStatuses[selfId] ?? false;
   return (
     <div>
-      <PeerParty key={selfId} partyId={selfId} status={true} isSelf={true} />
-      {Object.entries(peerStatuses).map(([partyId, status]) => (
-        <PeerParty
-          key={partyId}
-          partyId={partyId}
-          status={status}
-          isSelf={false}
-        />
-      ))}
+      <PeerParty
+        key={selfId}
+        partyId={selfId}
+        status={selfStatus}
+        isSelf={true}
+      />
+      {Object.entries(peerStatuses)
+        .filter(([partyId]) => partyId !== selfId)
+        .map(([partyId, status]) => (
+          <PeerParty
+            key={partyId}
+            partyId={partyId}
+            status={status}
+            isSelf={false}
+          />
+        ))}
     </div>
   );
 }

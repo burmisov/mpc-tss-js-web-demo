@@ -26,6 +26,7 @@ function Room() {
     const p2p = P2PConnection.createFor(partyId, roomId);
 
     const onPeerStatus = (partyId: string, connected: boolean) => {
+      console.log("ps", partyId, connected);
       setPeerStatuses((peerStatuses) => ({
         ...peerStatuses,
         [partyId]: connected,
@@ -38,6 +39,8 @@ function Room() {
 
     p2p.subscribeToPeerStatus(onPeerStatus);
     p2p.subscribeToPeerMessage(onPeerMessage);
+
+    p2p.connect();
 
     return () => {
       p2p.unsubscribeFromPeerStatus(onPeerStatus);

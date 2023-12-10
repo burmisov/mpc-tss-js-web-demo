@@ -1,30 +1,29 @@
-// @ts-expect-error has no types
-import P2PCF from 'p2pcf';
-
-type P2PCFPeer = {
-  id: string;
-  client_id: string;
-};
-
 type PeerData = {
-  p2pcfPeer: P2PCFPeer;
-  p2pcfId: string;
-  partyId: string;
-  status: 'connected' | 'disconnected';
+  partyId: string,
+  status: 'connected' | 'disconnected',
 };
 
 type PeerStatusListener = (partyId: string, connected: boolean) => void;
 type PeerMsgListener = (partyId: string, msg: unknown) => void;
+
+const WS_CHAT_SERVER_URL = 'wss://simple-websocket-rooms.fly.dev';
 
 export class P2PConnection {
   private static connections: Record<string, P2PConnection> = {};
 
   public readonly partyId: string;
   public readonly roomId: string;
-  private p2pcf: P2PCF;
+  private _ws?: WebSocket;
   private peers: Record<string, PeerData> = {};
   private peerStatusListeners: PeerStatusListener[] = [];
   private peerMsgListeners: PeerMsgListener[] = [];
+
+  private get ws(): WebSocket {
+    if (!this._ws) {
+      throw new Error('ws not initialized');
+    }
+    return this._ws;
+  }
 
   private constructor(partyId: string, roomId: string) {
     this.partyId = partyId;
@@ -36,53 +35,112 @@ export class P2PConnection {
     if (!P2PConnection.connections[key]) {
       const conn = new P2PConnection(partyId, roomId);
       P2PConnection.connections[key] = conn;
-      conn.connect();
     }
     return P2PConnection.connections[key];
   }
 
-  private connect() {
-    // TODO; for now use defaults incuding public signaling server
-    const options = {};
+  private connectOrReconnect() {
+    if (this._ws) {
+      this._ws.close();
+    }
+    this._ws = new WebSocket(WS_CHAT_SERVER_URL);
+    this.ws.onopen = this.handleWsOpen.bind(this);
+    this.ws.onclose = this.handleWsClose.bind(this);
+    this.ws.onmessage = this.handleWsMessage.bind(this);
+    this.ws.onerror = this.handleWsError.bind(this);
 
-    this.p2pcf = new P2PCF(this.partyId, this.roomId, options);
-    this.p2pcf.on('peerconnect', this.handlePeerConnect.bind(this));
-    this.p2pcf.on('peerclose', this.handlePeerClose.bind(this));
-    this.p2pcf.on('msg', this.handleMsg.bind(this));
-
-    this.p2pcf.start();
+    this.peerStatusListeners.forEach((listener) => {
+      listener(this.partyId, true);
+    });
   }
 
-  private handlePeerConnect(peer: P2PCFPeer) {
-    const { id, client_id } = peer;
+  public connect() {
+    this.connectOrReconnect();
+  }
+
+  private handleWsOpen() {
+    console.log('ws open');
+    this.ws.send(JSON.stringify({
+      action: 'subscribe',
+      partyId: this.partyId,
+      roomId: this.roomId,
+    }));
+  }
+
+  private handleWsClose(event: unknown) {
+    console.log('ws close', event, 'reconnecting');
+    this.connectOrReconnect();
+  }
+
+  private handleWsError(event: Event) {
+    console.log('ws error event', event);
+    // TODO
+  }
+
+  private handleWsMessage(event: Event) {
+    const body = JSON.parse((event as MessageEvent).data);
+    console.log('ws message', body);
+    if (body.error) {
+      console.error('chat error', body.error);
+      return;
+    }
+    if (body.action === 'presence') {
+      this.handlePeerPresence(
+        body.fromPartyId as string,
+        body.roomId as string,
+        body.online as boolean
+      );
+      return;
+    }
+    if (body.action === 'message') {
+      this.handlePeerMsg(
+        body.fromPartyId as string,
+        body.roomId as string,
+        body.msg as string
+      );
+      return;
+    }
+  }
+
+  private handlePeerPresence(partyId: string, roomId: string, online: boolean) {
+    console.log('handling presence', partyId, roomId, online);
+    if (roomId !== this.roomId) {
+      return;
+    }
+    if (online) {
+      this.handlePeerConnect(partyId);
+    } else {
+      this.handlePeerClose(partyId);
+    }
+  }
+
+  private handlePeerConnect(partyId: string) {
     const peerData: PeerData = {
-      p2pcfPeer: peer,
-      p2pcfId: id,
-      partyId: client_id,
+      partyId,
       status: 'connected',
     };
-    this.peers[id] = peerData;
+    this.peers[partyId] = peerData;
 
     this.peerStatusListeners.forEach((listener) => {
       listener(peerData.partyId, true);
     });
   }
 
-  private handlePeerClose(peer: P2PCFPeer) {
-    const { client_id } = peer as { id: string, client_id: string };
-    const peerData = this.peers[client_id];
+  private handlePeerClose(partyId: string) {
+    const peerData = this.peers[partyId];
     if (peerData) {
       peerData.status = 'disconnected';
     }
     this.peerStatusListeners.forEach((listener) => {
-      listener(client_id, false);
+      listener(partyId, false);
     });
   }
 
-  private handleMsg(peer: P2PCFPeer, data: Uint8Array) {
-    const { client_id: partyId } = peer;
-    const msgStr = new TextDecoder().decode(data);
-    const msgJson = JSON.parse(msgStr);
+  private handlePeerMsg(partyId: string, roomId: string, msg: string) {
+    if (roomId !== this.roomId) {
+      return;
+    }
+    const msgJson = JSON.parse(msg);
 
     this.peerMsgListeners.forEach((listener) => {
       listener(partyId, msgJson);
@@ -103,19 +161,24 @@ export class P2PConnection {
       }));
   }
 
-  private sendRawToPartyId(partyId: string, data: Uint8Array) {
+  private sendRawToPartyId(partyId: string, data: string) {
     const peerData = Object.values(this.peers)
       .find((peer) => peer.partyId === partyId);
     if (!peerData) {
       throw new Error(`No peer found for partyId ${partyId}`);
     }
-    this.p2pcf.send(peerData.p2pcfPeer, data);
+    this.ws.send(JSON.stringify({
+      action: 'message',
+      partyId: this.partyId,
+      toPartyId: partyId,
+      roomId: this.roomId,
+      msg: data,
+    }));
   }
 
   public sendToPartyId(partyId: string, msg: unknown) {
     const msgStr = JSON.stringify(msg);
-    const msgData = new TextEncoder().encode(msgStr);
-    this.sendRawToPartyId(partyId, msgData);
+    this.sendRawToPartyId(partyId, msgStr);
   }
 
   public subscribeToPeerStatus(listener: PeerStatusListener) {
@@ -138,6 +201,7 @@ export class P2PConnection {
 
   public close() {
     delete P2PConnection.connections[`${this.partyId}-${this.roomId}`];
-    this.p2pcf.destroy();
+    this.ws.onclose = null;
+    this.ws.close();
   }
 }
